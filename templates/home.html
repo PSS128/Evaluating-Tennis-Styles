@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Evaluating Tennis Player Styles in Relation to Tour Averages
+    </title>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <style>
+        /* Body Styling */
+        body {
+            background-color: #f4f4f4;
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Header */
+        h1 {
+            background-color: #2ecc71;
+            color: white;
+            margin: 0;
+            padding: 1em;
+            text-align: center;
+        }
+
+        /* Form Styling */
+        #search-form {
+            text-align: center;
+            margin-top: 2em;
+        }
+
+        #search-box {
+            padding: 0.5em;
+            font-size: 1em;
+        }
+
+        /* Search Button */
+        input[type="submit"] {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 0.5em 1em;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #27ae60;
+        }
+
+        /* Results Div */
+        #results {
+            margin: 2em;
+            padding: 1em;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0px 0px 5px #ccc;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Evaluating Tennis Player Styles in Relation to Tour Averages</h1>
+
+<div id="description" style="text-align: center; margin-top: 40px;">
+    Use the search bar below to get a deeper look at the styles of some of your favorite professional tennis players and see how they measure up against the tour!
+</div>
+
+
+<!-- Wrap your input and submit button in a form -->
+<form id="search-form">
+    <input type="text" id="search-box">
+    <input type="submit" value="Search">
+</form>
+
+<script>
+    $(document).ready(function () {
+        $("#search-box").autocomplete({
+            source: function (request, response) {
+                $.getJSON("/search", {
+                    term: request.term
+                }, function (data) {
+                    response(data);
+                });
+            },
+            minLength: 2  // Minimum number of characters needed to trigger autocomplete
+        });
+
+        // Add a submit handler for your form
+        $("#search-form").submit(function(event) {
+            event.preventDefault(); // Prevent the form from submitting via the browser.
+            var name = $("#search-box").val();
+            // Here you could send 'name' to your server to do something with it
+            // For example, using jQuery to perform an AJAX call:
+            $.ajax({
+                type: "GET",
+                url: "/tennis_data/" + name,
+                success: function(data) {
+                    // Do something with the received data
+                    // For example, insert it into a div with the ID 'results'
+                    $("#results").html(data);
+                }
+            });
+        });
+    });
+</script>
+
+<!-- Add a div where the results will be displayed -->
+<div id="results"></div>
+
+</body>
+</html>

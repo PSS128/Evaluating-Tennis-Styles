@@ -3,5 +3,4 @@ gunicorn
 requests
 jsonify
 bs4
-re
-csv
+

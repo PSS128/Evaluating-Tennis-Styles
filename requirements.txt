@@ -1,6 +1,5 @@
 Flask
 gunicorn
 requests
-jsonify
-bs4
+beautifulsoup4
 

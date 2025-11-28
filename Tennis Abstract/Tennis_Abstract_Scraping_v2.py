@@ -1,17 +1,25 @@
 import requests
 import re
 
-def get_page_source(url):
+import time
+import random
+
+def get_page_source(url, retries=3, delay_min=1, delay_max=3):
     try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
-        }
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        return response.text
+        for _ in range(retries):
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+            }
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                return response.text
+            print(f"Failed to retrieve, status code: {response.status_code}. Retrying...")
+            time.sleep(random.uniform(delay_min, delay_max))
+        return None
     except requests.exceptions.RequestException as e:
         print("Error fetching the page source:", e)
         return None
+
 
 
 def display_table(table):

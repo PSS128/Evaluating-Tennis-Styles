@@ -397,6 +397,31 @@ percentdata_2, percentdata_3, percentdata, percentdata_4 = fetch_all_percentage_
 #print(olddata_2)
 
 
+
+def fetch_matches(url, display = False):
+    page_source = get_page_source(url)
+
+    if page_source is None:
+        print("Failed to retrieve the page source.")
+        return None
+
+    # Updated regular expression pattern to find the word 'matches' and the word before it (presumably a number)
+    pattern = re.compile(r'(\d+)\s+matches')
+    match = pattern.search(page_source)
+
+    nummatches = None
+    if match:
+        # If the pattern is found, capture the word prior to "matches" into the variable nummatches
+        nummatches = match.group(1)
+
+    if display and nummatches:
+        print(f"Number of matches: {nummatches}")
+        
+    return nummatches
+
+#fetch_matches(url)
+
+
 all_percentage_data = [percentdata_2, percentdata_3, percentdata, percentdata_4]
 
 def find_keywords(all_percentage_data):

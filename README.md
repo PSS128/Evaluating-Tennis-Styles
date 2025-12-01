@@ -32,25 +32,6 @@ The core scraping and data processing module.
   - `fetch_matches()` - Gets the number of matches analyzed
   - `find_keywords()` - Generates descriptive keywords based on statistical patterns
 
-#### `Name_scrape_top_100.py`
-Scrapes player names from Tennis Abstract's meta page.
-- **Functions**:
-  - `get_page_source()` - Fetches webpage with retry logic
-  - `add_space_before_uppercase()` - Formats player names (e.g., "NovakDjokovic" → "Novak Djokovic")
-  - `atp_top_100_scraper()` - Scrapes top 100 ATP players
-  - `wta_top_100_scraper()` - Scrapes top 100 WTA players (filters for "wplayer" in URLs)
-  - `all_atp_players_scraper()` - Scrapes all ATP players with charting data
-  - `all_wta_players_scraper()` - Scrapes all WTA players with charting data
-- **Output**: CSV files saved to `csv_files/` directory
-
-#### `generate_csv_files.py`
-Build script that generates player name CSV files during deployment.
-- **Purpose**: Runs during Render deployment to populate player database
-- **Process**:
-  1. Creates `csv_files/` directory if it doesn't exist
-  2. Calls scraper functions with 2-second delays between operations
-  3. Falls back to minimal player list if scraping fails
-- **Fallback Players**: Novak Djokovic, Carlos Alcaraz, Jannik Sinner, Iga Swiatek, Aryna Sabalenka, Coco Gauff
 
 #### `requirements.txt`
 Python dependencies for the application:
@@ -60,17 +41,6 @@ Python dependencies for the application:
 - `beautifulsoup4` - HTML parsing library
 
 
-#### `csv_files/`
-Contains player name lists and tour average data:
-- `all_atp_players.csv` - Complete list of ATP players
-- `all_wta_players.csv` - Complete list of WTA players
-- `atp_top_100.csv` - Top 100 ATP players
-- `wta_top_100.csv` - Top 100 WTA players
-- `names.csv` - Legacy player names file
-- `atp_winners_formatted.csv` - ATP tour average for winner types
-- `atp_errors_formatted.csv` - ATP tour average for unforced errors
-- `wta_winners_formatted.csv` - WTA tour average for winner types
-- `wta_errors_formatted.csv` - WTA tour average for unforced errors
 
 1. Clone the repository:
 ```bash

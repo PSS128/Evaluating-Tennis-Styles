@@ -65,20 +65,38 @@ def load_wta_players_list():
 wta_players_set = load_wta_players_list()
 
 
-def get_page_source(url, retries=3, delay_min=1, delay_max=3):
+def get_page_source(url, retries=1, delay_min=0.5, delay_max=1):
     try:
-        for _ in range(retries):
+        for attempt in range(retries):
             headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5",
+                "Accept-Encoding": "gzip, deflate",
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1"
             }
-            response = requests.get(url, headers=headers)
-            if response.status_code == 200:
-                return response.text
-            print(f"Failed to retrieve, status code: {response.status_code}. Retrying...")
-            time.sleep(random.uniform(delay_min, delay_max))
+            try:
+                response = requests.get(url, headers=headers, timeout=10)
+                if response.status_code == 200:
+                    return response.text
+                elif response.status_code == 403:
+                    print(f"Access forbidden (403) for {url}. Server is blocking requests.")
+                    return None  # Don't retry on 403
+                else:
+                    print(f"Failed to retrieve, status code: {response.status_code}")
+                    if attempt < retries - 1:
+                        time.sleep(random.uniform(delay_min, delay_max))
+            except requests.exceptions.Timeout:
+                print(f"Request timeout for {url}")
+                return None
+            except requests.exceptions.RequestException as e:
+                print(f"Request error: {e}")
+                if attempt < retries - 1:
+                    time.sleep(random.uniform(delay_min, delay_max))
         return None
-    except requests.exceptions.RequestException as e:
-        print("Error fetching the page source:", e)
+    except Exception as e:
+        print("Unexpected error fetching the page source:", e)
         return None
 
 

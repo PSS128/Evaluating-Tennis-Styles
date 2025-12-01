@@ -54,37 +54,57 @@ def search():
 
 @app.route("/tennis_data/<name>", methods=["GET"])
 def tennis_data(name):
-    # Fetch your tennis data here, then pass it to render_template
-    tennis_name = name  # captured from the URL
-    # Remove all spaces from the name
-    name = name.replace(" ", "")
-    
-    # Your URL will look something like this depending on the player's name structure
-    url = f"https://www.tennisabstract.com/charting/{name}.html"
-    tennis_link  = url
-    nummatches = fetch_matches(url)
-    # Fetch all the data using your functions
-    olddata_2, newdata_2 = fetch_tennis_data_2(url, display=False)
-    olddata_3, newdata_3 = fetch_tennis_data_3(url, display=False)
-    olddata, newdata = fetch_tennis_data(url, display=False)
-    olddata_4, newdata_4 = fetch_tennis_data_4(url, display=False)
+    try:
+        # Fetch your tennis data here, then pass it to render_template
+        tennis_name = name  # captured from the URL
+        # Remove all spaces from the name
+        name = name.replace(" ", "")
 
-    percentdata_2 = display_percentage_difference(olddata_2, newdata_2, "Points by Rally Length")
-    percentdata_3 = display_percentage_difference(olddata_3, newdata_3, "Shot Frequency")
-    percentdata = display_percentage_difference(olddata, newdata, "Winner Type")
-    percentdata_4 = display_percentage_difference(olddata_4, newdata_4, "Unforced Error")
+        # Your URL will look something like this depending on the player's name structure
+        url = f"https://www.tennisabstract.com/charting/{name}.html"
+        tennis_link  = url
 
-    all_percentage_data = [percentdata_2, percentdata_3, percentdata, percentdata_4]
-    keywords = find_keywords(all_percentage_data)
-    
-    # Return the render template with all your data
-    return render_template("tennis_data.html", 
-                        olddata_2=olddata_2, newdata_2=newdata_2, percentdata_2=percentdata_2, 
-                        olddata_3=olddata_3, newdata_3=newdata_3, percentdata_3=percentdata_3,
-                        olddata=olddata, newdata=newdata, percentdata=percentdata,
-                        olddata_4=olddata_4, newdata_4=newdata_4, percentdata_4=percentdata_4, 
-                        tennis_name=tennis_name, tennis_link = tennis_link, nummatches = nummatches,
-                        keywords=keywords)
+        # Fetch matches with error handling
+        nummatches = fetch_matches(url)
+        if nummatches is None:
+            return render_template("error.html",
+                                 error_message=f"Unable to fetch data for {tennis_name}. The player page may not exist or the server is unavailable.",
+                                 player_name=tennis_name), 404
+
+        # Fetch all the data using your functions
+        olddata_2, newdata_2 = fetch_tennis_data_2(url, display=False)
+        olddata_3, newdata_3 = fetch_tennis_data_3(url, display=False)
+        olddata, newdata = fetch_tennis_data(url, display=False)
+        olddata_4, newdata_4 = fetch_tennis_data_4(url, display=False)
+
+        # Check if any data fetch failed
+        if None in [olddata_2, newdata_2, olddata_3, newdata_3, olddata, newdata, olddata_4, newdata_4]:
+            return render_template("error.html",
+                                 error_message=f"Unable to fetch complete data for {tennis_name}. Some data may be missing or unavailable.",
+                                 player_name=tennis_name), 500
+
+        percentdata_2 = display_percentage_difference(olddata_2, newdata_2, "Points by Rally Length")
+        percentdata_3 = display_percentage_difference(olddata_3, newdata_3, "Shot Frequency")
+        percentdata = display_percentage_difference(olddata, newdata, "Winner Type")
+        percentdata_4 = display_percentage_difference(olddata_4, newdata_4, "Unforced Error")
+
+        all_percentage_data = [percentdata_2, percentdata_3, percentdata, percentdata_4]
+        keywords = find_keywords(all_percentage_data)
+
+        # Return the render template with all your data
+        return render_template("tennis_data.html",
+                            olddata_2=olddata_2, newdata_2=newdata_2, percentdata_2=percentdata_2,
+                            olddata_3=olddata_3, newdata_3=newdata_3, percentdata_3=percentdata_3,
+                            olddata=olddata, newdata=newdata, percentdata=percentdata,
+                            olddata_4=olddata_4, newdata_4=newdata_4, percentdata_4=percentdata_4,
+                            tennis_name=tennis_name, tennis_link=tennis_link, nummatches=nummatches,
+                            keywords=keywords)
+
+    except Exception as e:
+        print(f"Error processing tennis data for {name}: {e}")
+        return render_template("error.html",
+                             error_message=f"An unexpected error occurred while fetching data for {tennis_name}.",
+                             player_name=tennis_name), 500
 
 
 

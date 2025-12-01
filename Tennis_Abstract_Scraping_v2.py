@@ -42,6 +42,28 @@ def load_formatted_data_from_csv():
 # Load the data into global variables
 atp_winners_formatted, atp_errors_formatted, wta_winners_formatted, wta_errors_formatted = load_formatted_data_from_csv()
 
+# Load WTA players list for checking
+def load_wta_players_list():
+    """
+    Loads the list of all WTA players from CSV file.
+    Returns a set of player names (without spaces) for fast lookup.
+    """
+    wta_players = set()
+    filepath = os.path.join(os.path.dirname(__file__), 'all_wta_players.csv')
+
+    if os.path.exists(filepath):
+        with open(filepath, 'r', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                # Remove spaces and store in lowercase for case-insensitive comparison
+                player_name = row['name'].replace(' ', '').lower()
+                wta_players.add(player_name)
+
+    return wta_players
+
+# Load WTA players list at module initialization
+wta_players_set = load_wta_players_list()
+
 
 def get_page_source(url, retries=3, delay_min=1, delay_max=3):
     try:
@@ -90,34 +112,10 @@ def fetch_tennis_data(url, display = True):
 
     # Extract player name from the URL
     # URL format: http://www.tennisabstract.com/charting/PlayerName.html
-    player_name = url.split('/')[-1].replace('.html', '')
+    player_name = url.split('/')[-1].replace('.html', '').lower()
 
-    # Fetch the meta page to check if player is WTA or ATP
-    meta_page_source = get_page_source('https://www.tennisabstract.com/charting/meta.html')
-
-    # Default to ATP if meta page cannot be fetched
-    is_wta_player = False
-
-    # Only proceed with WTA check if meta page was successfully fetched
-    if meta_page_source is not None:
-        # Parse the HTML content
-        soup = BeautifulSoup(meta_page_source, 'html.parser')
-
-        # Find all links with "p=" in href
-        names_links = soup.find_all('a', href=lambda href: (href and "p=" in href))
-
-        # Search for the player name in the links and check if it contains "wplayer"
-        for link in names_links:
-            link_href = link.get('href')
-            if link_href and "p=" in link_href:
-                # Extract the name from the href (format: ?p=PlayerName)
-                link_player_name = link_href.split('p=')[1] if 'p=' in link_href else ''
-                # Check if this is our player
-                if link_player_name.lower() == player_name.lower():
-                    # Check if this link contains "wplayer"
-                    if "wplayer" in link_href:
-                        is_wta_player = True
-                    break
+    # Check if player is in WTA players list
+    is_wta_player = player_name in wta_players_set
 
     # Create olddata and newdata with percentages
     # Set olddata based on player gender
@@ -259,34 +257,10 @@ def fetch_tennis_data_4(url, display = True):
     # Create olddata and newdata with percentages
     # Extract player name from the URL
     # URL format: http://www.tennisabstract.com/charting/PlayerName.html
-    player_name = url.split('/')[-1].replace('.html', '')
+    player_name = url.split('/')[-1].replace('.html', '').lower()
 
-    # Fetch the meta page to check if player is WTA or ATP
-    meta_page_source = get_page_source('https://www.tennisabstract.com/charting/meta.html')
-
-    # Default to ATP if meta page cannot be fetched
-    is_wta_player = False
-
-    # Only proceed with WTA check if meta page was successfully fetched
-    if meta_page_source is not None:
-        # Parse the HTML content
-        soup = BeautifulSoup(meta_page_source, 'html.parser')
-
-        # Find all links with "p=" in href
-        names_links = soup.find_all('a', href=lambda href: (href and "p=" in href))
-
-        # Search for the player name in the links and check if it contains "wplayer"
-        for link in names_links:
-            link_href = link.get('href')
-            if link_href and "p=" in link_href:
-                # Extract the name from the href (format: ?p=PlayerName)
-                link_player_name = link_href.split('p=')[1] if 'p=' in link_href else ''
-                # Check if this is our player
-                if link_player_name.lower() == player_name.lower():
-                    # Check if this link contains "wplayer"
-                    if "wplayer" in link_href:
-                        is_wta_player = True
-                    break
+    # Check if player is in WTA players list
+    is_wta_player = player_name in wta_players_set
 
     # Set olddata based on player gender
     if is_wta_player:
@@ -566,4 +540,4 @@ def find_keywords(all_percentage_data):
 keywords = find_keywords(all_percentage_data)
 
 #print(keywords)
-#print(fetch_tennis_data("http://www.tennisabstract.com/charting/NovakDjokovic.html"))
+print(fetch_tennis_data("http://www.tennisabstract.com/charting/IgaSwiatek.html"))

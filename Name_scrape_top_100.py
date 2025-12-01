@@ -121,3 +121,98 @@ def wta_top_100_scraper():
 
     print(f"Scraping done. Names stored in {csv_path_3}")
 
+def all_atp_players_scraper():
+    """
+    Scrapes ALL ATP players from Tennis Abstract and saves to CSV.
+    """
+    # Fetch the webpage
+    page_source = get_page_source('https://www.tennisabstract.com/charting/meta.html')
+    if page_source is None:
+        print("Failed to get the webpage")
+        return
+
+    # Parse the HTML content
+    soup = BeautifulSoup(page_source, 'html.parser')
+
+    # Assuming names are in <a> tags and href attributes contain the string "p="
+    names_links = soup.find_all('a', href=lambda href: (href and "p=" in href))
+
+    # Get the parent directory (project root) to save CSV
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(script_dir)
+    csv_path = os.path.join(parent_dir, 'all_atp_players.csv')
+
+    # Open a CSV file to store the names
+    with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
+        fieldnames = ['name']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        # Write the header
+        writer.writeheader()
+
+        # Extract names, add spaces before uppercase letters, and write to the CSV
+        # Only get ATP players (those WITHOUT "wplayer" in the URL)
+        count = 0
+        for link in names_links:
+            url = link.get('href')
+            if url and "p=" in url and "wplayer" not in url:
+                try:
+                    name = url.split("p=")[1]
+                    formatted_name = add_space_before_uppercase(name)
+                    writer.writerow({'name': formatted_name})
+                    count += 1
+                except IndexError:
+                    print(f"Skipping malformed URL: {url}")
+                    continue
+
+    print(f"ATP scraping done. {count} players stored in {csv_path}")
+
+def all_wta_players_scraper():
+    """
+    Scrapes ALL WTA players from Tennis Abstract and saves to CSV.
+    """
+    # Fetch the webpage
+    page_source = get_page_source('https://www.tennisabstract.com/charting/meta.html')
+    if page_source is None:
+        print("Failed to get the webpage")
+        return
+
+    # Parse the HTML content
+    soup = BeautifulSoup(page_source, 'html.parser')
+
+    # Assuming names are in <a> tags and href attributes contain the string "p="
+    names_links = soup.find_all('a', href=lambda href: (href and "p=" in href))
+
+    # Get the parent directory (project root) to save CSV
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(script_dir)
+    csv_path = os.path.join(parent_dir, 'all_wta_players.csv')
+
+    # Open a CSV file to store the names
+    with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
+        fieldnames = ['name']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        # Write the header
+        writer.writeheader()
+
+        # Extract names, add spaces before uppercase letters, and write to the CSV
+        # Only get WTA players (those WITH "wplayer" in the URL)
+        count = 0
+        for link in names_links:
+            url = link.get('href')
+            if url and "p=" in url and "wplayer" in url:
+                try:
+                    name = url.split("p=")[1]
+                    formatted_name = add_space_before_uppercase(name)
+                    writer.writerow({'name': formatted_name})
+                    count += 1
+                except IndexError:
+                    print(f"Skipping malformed URL: {url}")
+                    continue
+
+    print(f"WTA scraping done. {count} players stored in {csv_path}")
+
+
+
+all_wta_players_scraper()

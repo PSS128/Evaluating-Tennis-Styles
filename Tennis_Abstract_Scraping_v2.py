@@ -15,7 +15,7 @@ def load_formatted_data_from_csv():
     """
     def load_csv(filename):
         """Helper function to load a single CSV file"""
-        filepath = os.path.join(os.path.dirname(__file__), filename)
+        filepath = os.path.join(os.path.dirname(__file__), 'csv_files', filename)
         if not os.path.exists(filepath):
             # Return default empty data if file doesn't exist
             return [['Type', 'Count', 'Percentage']]
@@ -49,7 +49,7 @@ def load_wta_players_list():
     Returns a set of player names (without spaces) for fast lookup.
     """
     wta_players = set()
-    filepath = os.path.join(os.path.dirname(__file__), 'all_wta_players.csv')
+    filepath = os.path.join(os.path.dirname(__file__), 'csv_files', 'all_wta_players.csv')
 
     if os.path.exists(filepath):
         with open(filepath, 'r', encoding='utf-8') as csvfile:
@@ -540,4 +540,4 @@ def find_keywords(all_percentage_data):
 keywords = find_keywords(all_percentage_data)
 
 #print(keywords)
-print(fetch_tennis_data("http://www.tennisabstract.com/charting/IgaSwiatek.html"))
+#print(fetch_tennis_data("http://www.tennisabstract.com/charting/IgaSwiatek.html"))

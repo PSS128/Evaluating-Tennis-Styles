@@ -42,7 +42,13 @@ def atp_top_100_scraper():
     # Get the parent directory (project root) to save names.csv
     script_dir = os.path.dirname(os.path.abspath(__file__))
     parent_dir = os.path.dirname(script_dir)
-    csv_path_2 = os.path.join(parent_dir, 'atp_top_100.csv')
+    csv_dir = os.path.join(parent_dir, 'csv_files')
+
+    # Ensure csv_files directory exists
+    if not os.path.exists(csv_dir):
+        os.makedirs(csv_dir)
+
+    csv_path_2 = os.path.join(csv_dir, 'atp_top_100.csv')
 
     # Open a CSV file to store the names
     with open(csv_path_2, 'w', newline='', encoding='utf-8') as csvfile:
@@ -89,7 +95,13 @@ def wta_top_100_scraper():
     # Get the parent directory (project root) to save names.csv
     script_dir = os.path.dirname(os.path.abspath(__file__))
     parent_dir = os.path.dirname(script_dir)
-    csv_path_3 = os.path.join(parent_dir, 'wta_top_100.csv')
+    csv_dir = os.path.join(parent_dir, 'csv_files')
+
+    # Ensure csv_files directory exists
+    if not os.path.exists(csv_dir):
+        os.makedirs(csv_dir)
+
+    csv_path_3 = os.path.join(csv_dir, 'wta_top_100.csv')
 
     # Open a CSV file to store the names
     with open(csv_path_3, 'w', newline='', encoding='utf-8') as csvfile:
@@ -140,7 +152,13 @@ def all_atp_players_scraper():
     # Get the parent directory (project root) to save CSV
     script_dir = os.path.dirname(os.path.abspath(__file__))
     parent_dir = os.path.dirname(script_dir)
-    csv_path = os.path.join(parent_dir, 'all_atp_players.csv')
+    csv_dir = os.path.join(parent_dir, 'csv_files')
+
+    # Ensure csv_files directory exists
+    if not os.path.exists(csv_dir):
+        os.makedirs(csv_dir)
+
+    csv_path = os.path.join(csv_dir, 'all_atp_players.csv')
 
     # Open a CSV file to store the names
     with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
@@ -186,7 +204,13 @@ def all_wta_players_scraper():
     # Get the parent directory (project root) to save CSV
     script_dir = os.path.dirname(os.path.abspath(__file__))
     parent_dir = os.path.dirname(script_dir)
-    csv_path = os.path.join(parent_dir, 'all_wta_players.csv')
+    csv_dir = os.path.join(parent_dir, 'csv_files')
+
+    # Ensure csv_files directory exists
+    if not os.path.exists(csv_dir):
+        os.makedirs(csv_dir)
+
+    csv_path = os.path.join(csv_dir, 'all_wta_players.csv')
 
     # Open a CSV file to store the names
     with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:

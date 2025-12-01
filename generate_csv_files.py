@@ -3,6 +3,7 @@ Script to generate CSV files needed for deployment.
 This should be run during the build process on Render.
 """
 import os
+import time
 
 # Ensure csv_files directory exists
 csv_dir = 'csv_files'
@@ -16,12 +17,15 @@ try:
 
     print("Scraping ATP players...")
     all_atp_players_scraper()
+    time.sleep(2)  # Add delay between scraping operations
 
     print("Scraping WTA players...")
     all_wta_players_scraper()
+    time.sleep(2)  # Add delay between scraping operations
 
     print("Scraping top 100 ATP...")
     atp_top_100_scraper()
+    time.sleep(2)  # Add delay between scraping operations
 
     print("Scraping top 100 WTA...")
     wta_top_100_scraper()

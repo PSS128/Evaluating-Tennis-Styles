@@ -8,7 +8,9 @@ from Tennis_Abstract_Scraping_v2 import (
     fetch_tennis_data_4,
     display_percentage_difference,
     fetch_matches,
-    find_keywords
+    find_keywords,
+    get_cached_data,
+    save_to_cache
 )
 
 app = Flask(__name__)
@@ -64,6 +66,40 @@ def tennis_data(name):
         url = f"https://www.tennisabstract.com/charting/{name}.html"
         tennis_link  = url
 
+        # Check cache first
+        cached_data = get_cached_data(name)
+
+        if cached_data:
+            # Cache hit - use cached data
+            print(f"Using cached data for {tennis_name}")
+            return render_template("tennis_data.html",
+                                olddata_2=cached_data['data']['olddata_2'],
+                                newdata_2=cached_data['data']['newdata_2'],
+                                percentdata_2=cached_data['percentdata']['percentdata_2'],
+                                olddata_3=cached_data['data']['olddata_3'],
+                                newdata_3=cached_data['data']['newdata_3'],
+                                percentdata_3=cached_data['percentdata']['percentdata_3'],
+                                olddata=cached_data['data']['olddata'],
+                                newdata=cached_data['data']['newdata'],
+                                percentdata=cached_data['percentdata']['percentdata'],
+                                olddata_4=cached_data['data']['olddata_4'],
+                                newdata_4=cached_data['data']['newdata_4'],
+                                percentdata_4=cached_data['percentdata']['percentdata_4'],
+                                tennis_name=tennis_name,
+                                tennis_link=tennis_link,
+                                nummatches=cached_data['nummatches'],
+                                keywords=cached_data['keywords'])
+
+        # Cache miss - fetch fresh data
+        print(f"Cache miss for {tennis_name}, fetching fresh data...")
+
+        # Fetch matches with error handling
+        nummatches = fetch_matches(url)
+        if nummatches is None:
+            return render_template("error.html",
+                                 error_message=f"Unable to fetch data for {tennis_name}. The player page may not exist or the server is unavailable.",
+                                 player_name=tennis_name), 404
+
         # Fetch all the data using your functions
         olddata_2, newdata_2 = fetch_tennis_data_2(url, display=False)
         olddata_3, newdata_3 = fetch_tennis_data_3(url, display=False)
@@ -84,13 +120,36 @@ def tennis_data(name):
         all_percentage_data = [percentdata_2, percentdata_3, percentdata, percentdata_4]
         keywords = find_keywords(all_percentage_data)
 
+        # Save to cache for future requests
+        cache_dict = {
+            'nummatches': nummatches,
+            'data': {
+                'olddata_2': olddata_2,
+                'newdata_2': newdata_2,
+                'olddata_3': olddata_3,
+                'newdata_3': newdata_3,
+                'olddata': olddata,
+                'newdata': newdata,
+                'olddata_4': olddata_4,
+                'newdata_4': newdata_4
+            },
+            'percentdata': {
+                'percentdata_2': percentdata_2,
+                'percentdata_3': percentdata_3,
+                'percentdata': percentdata,
+                'percentdata_4': percentdata_4
+            },
+            'keywords': keywords
+        }
+        save_to_cache(name, cache_dict)
+
         # Return the render template with all your data
         return render_template("tennis_data.html",
                             olddata_2=olddata_2, newdata_2=newdata_2, percentdata_2=percentdata_2,
                             olddata_3=olddata_3, newdata_3=newdata_3, percentdata_3=percentdata_3,
                             olddata=olddata, newdata=newdata, percentdata=percentdata,
                             olddata_4=olddata_4, newdata_4=newdata_4, percentdata_4=percentdata_4,
-                            tennis_name=tennis_name, tennis_link=tennis_link,
+                            tennis_name=tennis_name, tennis_link=tennis_link, nummatches=nummatches,
                             keywords=keywords)
 
     except Exception as e:

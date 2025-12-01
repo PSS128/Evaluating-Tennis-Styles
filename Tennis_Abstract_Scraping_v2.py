@@ -5,6 +5,11 @@ import time
 import random
 import os
 from bs4 import BeautifulSoup
+import json
+from datetime import datetime, timedelta
+
+# Create a global session object for connection pooling and cookie persistence
+session = requests.Session()
 
 
 # Load formatted data from CSV files
@@ -65,30 +70,129 @@ def load_wta_players_list():
 wta_players_set = load_wta_players_list()
 
 
-def get_page_source(url, retries=1, delay_min=0.5, delay_max=1):
+# Cache helper functions
+def get_cache_path(player_name):
+    """
+    Returns the file path for a player's cache file.
+    Player name should be without spaces (e.g., 'NovakDjokovic')
+    """
+    cache_dir = os.path.join(os.path.dirname(__file__), 'cache')
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+    # Normalize player name to lowercase for consistent file naming
+    filename = f"{player_name.lower().replace(' ', '')}.json"
+    return os.path.join(cache_dir, filename)
+
+
+def is_cache_fresh(timestamp_str, max_age_hours=24):
+    """
+    Checks if cached data is still fresh based on timestamp.
+    Returns True if cache is fresh, False otherwise.
+    """
+    try:
+        cache_time = datetime.fromisoformat(timestamp_str)
+        age = datetime.now() - cache_time
+        return age < timedelta(hours=max_age_hours)
+    except (ValueError, TypeError):
+        return False
+
+
+def get_cached_data(player_name):
+    """
+    Retrieves cached data for a player if it exists and is fresh.
+    Returns the cached data dict or None if cache miss/stale.
+    """
+    cache_path = get_cache_path(player_name)
+
+    if not os.path.exists(cache_path):
+        return None
+
+    try:
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            cached_data = json.load(f)
+
+        # Check if cache is fresh
+        if is_cache_fresh(cached_data.get('timestamp', '')):
+            print(f"Cache hit for {player_name} (age: {cached_data.get('timestamp', 'unknown')})")
+            return cached_data
+        else:
+            print(f"Cache expired for {player_name}")
+            return None
+
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"Error reading cache for {player_name}: {e}")
+        return None
+
+
+def save_to_cache(player_name, data_dict):
+    """
+    Saves player data to cache file.
+    data_dict should contain all the fetched data for the player.
+    """
+    cache_path = get_cache_path(player_name)
+
+    # Add timestamp to the data
+    data_dict['timestamp'] = datetime.now().isoformat()
+    data_dict['player_name'] = player_name
+
+    try:
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            json.dump(data_dict, f, indent=2)
+        print(f"Saved cache for {player_name}")
+    except IOError as e:
+        print(f"Error saving cache for {player_name}: {e}")
+
+
+def get_page_source(url, retries=3, delay_min=1, delay_max=3):
+    """
+    Fetches page source with browser-like headers and session management.
+    Uses connection pooling and realistic delays to avoid detection.
+    """
     try:
         for attempt in range(retries):
+            # Add a small random delay before each request to look more human
+            if attempt > 0:
+                time.sleep(random.uniform(delay_min, delay_max))
+
+            # Comprehensive browser-like headers
             headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept-Encoding": "gzip, deflate, br",
+                "DNT": "1",
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1",
+                "Referer": "https://www.tennisabstract.com/",
+                "Cache-Control": "max-age=0",
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "same-origin"
             }
+
             try:
-                response = requests.get(url, headers=headers, timeout=10)
+                # Use session for connection pooling and cookie persistence
+                # Remove timeout to avoid looking bot-like
+                response = session.get(url, headers=headers)
+
                 if response.status_code == 200:
                     return response.text
                 elif response.status_code == 403:
                     print(f"Access forbidden (403) for {url}. Server is blocking requests.")
-                    return None  # Don't retry on 403
+                    # Don't retry immediately on 403, but allow retry with delay
+                    if attempt < retries - 1:
+                        print(f"Waiting before retry... (Attempt {attempt + 1}/{retries})")
+                        time.sleep(random.uniform(3, 5))  # Longer delay for 403
+                    else:
+                        return None
                 else:
                     print(f"Failed to retrieve, status code: {response.status_code}")
-                    if attempt < retries - 1:
-                        time.sleep(random.uniform(delay_min, delay_max))
-            except requests.exceptions.Timeout:
-                print(f"Request timeout for {url}")
-                return None
+
             except requests.exceptions.RequestException as e:
                 print(f"Request error: {e}")
                 if attempt < retries - 1:
                     time.sleep(random.uniform(delay_min, delay_max))
+
         return None
     except Exception as e:
         print("Unexpected error fetching the page source:", e)
@@ -554,4 +658,4 @@ keywords = find_keywords(all_percentage_data)
 
 #print(keywords)
 #print(fetch_tennis_data("http://www.tennisabstract.com/charting/IgaSwiatek.html"))
-#print(all_percentage_data) 
+print(all_percentage_data) 

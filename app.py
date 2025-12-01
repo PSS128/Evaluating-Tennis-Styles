@@ -8,7 +8,7 @@ from Tennis_Abstract_Scraping_v2 import (
     fetch_tennis_data_4,
     display_percentage_difference,
     fetch_matches,
-    find_keywords,
+    find_keywords
 )
 
 app = Flask(__name__)

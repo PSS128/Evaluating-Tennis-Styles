@@ -1,212 +1,23 @@
 import requests
 import re
-import csv
+
 import time
 import random
-import os
-from bs4 import BeautifulSoup
-import json
-from datetime import datetime, timedelta
-
-# Create a global session object for connection pooling and cookie persistence
-session = requests.Session()
-
-
-# Load formatted data from CSV files
-def load_formatted_data_from_csv():
-    """
-    Loads the formatted data from CSV files into global variables.
-    Returns them in the format: [['Header', 'Count', 'Percentage'], ['Type', count, 'X.XX%'], ...]
-    """
-    def load_csv(filename):
-        """Helper function to load a single CSV file"""
-        filepath = os.path.join(os.path.dirname(__file__), 'csv_files', filename)
-        if not os.path.exists(filepath):
-            # Return default empty data if file doesn't exist
-            return [['Type', 'Count', 'Percentage']]
-
-        with open(filepath, 'r', encoding='utf-8') as csvfile:
-            reader = csv.reader(csvfile)
-            data = []
-            for i, row in enumerate(reader):
-                if i == 0:
-                    # Header row - keep as strings
-                    data.append(row)
-                else:
-                    # Data rows - convert count to int, keep percentage as string
-                    data.append([row[0], int(row[1]), row[2]])
-            return data
-
-    atp_winners = load_csv('atp_winners_formatted.csv')
-    atp_errors = load_csv('atp_errors_formatted.csv')
-    wta_winners = load_csv('wta_winners_formatted.csv')
-    wta_errors = load_csv('wta_errors_formatted.csv')
-
-    return atp_winners, atp_errors, wta_winners, wta_errors
-
-# Load the data into global variables
-try:
-    atp_winners_formatted, atp_errors_formatted, wta_winners_formatted, wta_errors_formatted = load_formatted_data_from_csv()
-except Exception as e:
-    print(f"Warning: Could not load formatted CSV data: {e}")
-    # Set default empty data if loading fails
-    atp_winners_formatted = [['Type', 'Count', 'Percentage']]
-    atp_errors_formatted = [['Type', 'Count', 'Percentage']]
-    wta_winners_formatted = [['Type', 'Count', 'Percentage']]
-    wta_errors_formatted = [['Type', 'Count', 'Percentage']]
-
-# Load WTA players list for checking
-def load_wta_players_list():
-    """
-    Loads the list of all WTA players from CSV file.
-    Returns a set of player names (without spaces) for fast lookup.
-    """
-    wta_players = set()
-    filepath = os.path.join(os.path.dirname(__file__), 'csv_files', 'all_wta_players.csv')
-
-    try:
-        if os.path.exists(filepath):
-            with open(filepath, 'r', encoding='utf-8') as csvfile:
-                reader = csv.DictReader(csvfile)
-                for row in reader:
-                    # Remove spaces and store in lowercase for case-insensitive comparison
-                    player_name = row['name'].replace(' ', '').lower()
-                    wta_players.add(player_name)
-    except Exception as e:
-        print(f"Warning: Could not load WTA players list: {e}")
-
-    return wta_players
-
-# Load WTA players list at module initialization
-wta_players_set = load_wta_players_list()
-
-
-# Cache helper functions
-def get_cache_path(player_name):
-    """
-    Returns the file path for a player's cache file.
-    Player name should be without spaces (e.g., 'NovakDjokovic')
-    """
-    cache_dir = os.path.join(os.path.dirname(__file__), 'cache')
-    if not os.path.exists(cache_dir):
-        os.makedirs(cache_dir)
-    # Normalize player name to lowercase for consistent file naming
-    filename = f"{player_name.lower().replace(' ', '')}.json"
-    return os.path.join(cache_dir, filename)
-
-
-def is_cache_fresh(timestamp_str, max_age_hours=24):
-    """
-    Checks if cached data is still fresh based on timestamp.
-    Returns True if cache is fresh, False otherwise.
-    """
-    try:
-        cache_time = datetime.fromisoformat(timestamp_str)
-        age = datetime.now() - cache_time
-        return age < timedelta(hours=max_age_hours)
-    except (ValueError, TypeError):
-        return False
-
-
-def get_cached_data(player_name):
-    """
-    Retrieves cached data for a player if it exists and is fresh.
-    Returns the cached data dict or None if cache miss/stale.
-    """
-    cache_path = get_cache_path(player_name)
-
-    if not os.path.exists(cache_path):
-        return None
-
-    try:
-        with open(cache_path, 'r', encoding='utf-8') as f:
-            cached_data = json.load(f)
-
-        # Check if cache is fresh
-        if is_cache_fresh(cached_data.get('timestamp', '')):
-            print(f"Cache hit for {player_name} (age: {cached_data.get('timestamp', 'unknown')})")
-            return cached_data
-        else:
-            print(f"Cache expired for {player_name}")
-            return None
-
-    except (json.JSONDecodeError, IOError) as e:
-        print(f"Error reading cache for {player_name}: {e}")
-        return None
-
-
-def save_to_cache(player_name, data_dict):
-    """
-    Saves player data to cache file.
-    data_dict should contain all the fetched data for the player.
-    """
-    cache_path = get_cache_path(player_name)
-
-    # Add timestamp to the data
-    data_dict['timestamp'] = datetime.now().isoformat()
-    data_dict['player_name'] = player_name
-
-    try:
-        with open(cache_path, 'w', encoding='utf-8') as f:
-            json.dump(data_dict, f, indent=2)
-        print(f"Saved cache for {player_name}")
-    except IOError as e:
-        print(f"Error saving cache for {player_name}: {e}")
-
 
 def get_page_source(url, retries=3, delay_min=1, delay_max=3):
-    """
-    Fetches page source with browser-like headers and session management.
-    Uses connection pooling and realistic delays to avoid detection.
-    """
     try:
-        for attempt in range(retries):
-            # Add a small random delay before each request to look more human
-            if attempt > 0:
-                time.sleep(random.uniform(delay_min, delay_max))
-
-            # Comprehensive browser-like headers
+        for _ in range(retries):
             headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Accept-Encoding": "gzip, deflate, br",
-                "DNT": "1",
-                "Connection": "keep-alive",
-                "Upgrade-Insecure-Requests": "1",
-                "Referer": "https://www.tennisabstract.com/",
-                "Cache-Control": "max-age=0",
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-Site": "same-origin"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
             }
-
-            try:
-                # Use session for connection pooling and cookie persistence
-                # Remove timeout to avoid looking bot-like
-                response = session.get(url, headers=headers)
-
-                if response.status_code == 200:
-                    return response.text
-                elif response.status_code == 403:
-                    print(f"Access forbidden (403) for {url}. Server is blocking requests.")
-                    # Don't retry immediately on 403, but allow retry with delay
-                    if attempt < retries - 1:
-                        print(f"Waiting before retry... (Attempt {attempt + 1}/{retries})")
-                        time.sleep(random.uniform(3, 5))  # Longer delay for 403
-                    else:
-                        return None
-                else:
-                    print(f"Failed to retrieve, status code: {response.status_code}")
-
-            except requests.exceptions.RequestException as e:
-                print(f"Request error: {e}")
-                if attempt < retries - 1:
-                    time.sleep(random.uniform(delay_min, delay_max))
-
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                return response.text
+            print(f"Failed to retrieve, status code: {response.status_code}. Retrying...")
+            time.sleep(random.uniform(delay_min, delay_max))
         return None
-    except Exception as e:
-        print("Unexpected error fetching the page source:", e)
+    except requests.exceptions.RequestException as e:
+        print("Error fetching the page source:", e)
         return None
 
 
@@ -225,8 +36,7 @@ def fetch_tennis_data(url, display = True):
     page_source = get_page_source(url)
 
     if page_source is None:
-        print("Failed to retrieve the page source.")
-        return None, None
+        exit("Failed to retrieve the page source.")
 
     pattern = re.compile(r"'(Ace|Forehand|Backhand|Net)', (\d+)]")
     matches = pattern.findall(page_source)
@@ -238,19 +48,8 @@ def fetch_tennis_data(url, display = True):
     total_count_old = sum(count for _, count in data_rows[:half_index])
     total_count_new = sum(count for _, count in data_rows[half_index:half_index + 4])
 
-    # Extract player name from the URL
-    # URL format: http://www.tennisabstract.com/charting/PlayerName.html
-    player_name = url.split('/')[-1].replace('.html', '').lower()
-
-    # Check if player is in WTA players list
-    is_wta_player = player_name in wta_players_set
-
     # Create olddata and newdata with percentages
-    # Set olddata based on player gender
-    if is_wta_player:
-        olddata = wta_winners_formatted
-    else:
-        olddata = atp_winners_formatted
+    olddata = [header] + [[winner_type, count, "{:.2f}%".format((count / total_count_old) * 100)] for winner_type, count in data_rows[:half_index]]
     newdata = [header] + [[winner_type, count, "{:.2f}%".format((count / total_count_new) * 100)] for winner_type, count in data_rows[half_index:half_index + 4]]
     title = header[0]
 
@@ -265,16 +64,15 @@ def fetch_tennis_data(url, display = True):
 url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
 #fetch_tennis_data(url)
 
-#fetch_tennis_data function stitches together the old and newdata
 
-#Shot length
+
+
 def fetch_tennis_data_2(url, display = True):
     page_source = get_page_source(url)
 
     # Check if the page source was successfully fetched
     if page_source is None:
-        print("Failed to retrieve the page source.")
-        return None, None
+        exit("Failed to retrieve the page source.")
 
     # Regular expression pattern to extract numbers after 'Points by Rally Length' values
     pattern = re.compile(r"'(1 to 3 shots|4 to 6 shots|7 to 9 shots|10\+ shots)', (\d+)]")
@@ -304,20 +102,19 @@ def fetch_tennis_data_2(url, display = True):
     return olddata, newdata
 
 # Example Usage:
-#url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
+url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
 #fetch_tennis_data_2(url)
 
 
 
 
-#Shot Frequency
+
 def fetch_tennis_data_3(url, display = True):
     page_source = get_page_source(url)
 
     # Check if the page source was successfully fetched
     if page_source is None:
-        print("Failed to retrieve the page source.")
-        return None, None
+        exit("Failed to retrieve the page source.")
 
     # Regular expression pattern to extract numbers after 'Shot Frequency' values
     pattern = re.compile(r"'(FH Drive|BH Drive|FH Slice|BH Slice|Dropshot|Lob|Net)', (\d+)]")
@@ -351,17 +148,16 @@ def fetch_tennis_data_3(url, display = True):
     return olddata, newdata
 
 # Example Usage:
-#url = "http://www.tennisabstract.com/charting/IgaSwiatek.html"
+url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
 #fetch_tennis_data_3(url)
 
-#Unforced errors
+
 def fetch_tennis_data_4(url, display = True):
     page_source = get_page_source(url)
 
     # Check if the page source was successfully fetched
     if page_source is None:
-        print("Failed to retrieve the page source.")
-        return None, None
+        exit("Failed to retrieve the page source.")
 
     # Regular expression pattern to extract numbers after 'Unforced Error' values
     pattern = re.compile(r"'(Double Fault|Forehand|Backhand|Net)', (\d+)]")
@@ -383,19 +179,7 @@ def fetch_tennis_data_4(url, display = True):
     total_count_new = sum(count for _, count in data_rows[new_indices])
 
     # Create olddata and newdata with percentages
-    # Extract player name from the URL
-    # URL format: http://www.tennisabstract.com/charting/PlayerName.html
-    player_name = url.split('/')[-1].replace('.html', '').lower()
-
-    # Check if player is in WTA players list
-    is_wta_player = player_name in wta_players_set
-
-    # Set olddata based on player gender
-    if is_wta_player:
-        olddata = wta_errors_formatted
-    else:
-        olddata = atp_errors_formatted
-
+    olddata = [header] + [[error_type, count, "{:.2f}%".format((count / total_count_old) * 100)] for error_type, count in data_rows[old_indices]]
     newdata = [header] + [[error_type, count, "{:.2f}%".format((count / total_count_new) * 100)] for error_type, count in data_rows[new_indices]]
     title = header[0]
 
@@ -407,7 +191,7 @@ def fetch_tennis_data_4(url, display = True):
     return olddata, newdata
 
 # Example Usage:
-#url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
+url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
 #fetch_tennis_data_4(url)
 
 
@@ -445,7 +229,7 @@ def display_percentage_difference(olddata, newdata, title):
     return percentage_difference_data
 
 # Example Usage
-#url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
+url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
 
 
 
@@ -476,7 +260,7 @@ def fetch_all_tennis_data(url):
     
 
 # Example usage
-#url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
+url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
 #fetch_all_tennis_data(url)
 
 
@@ -517,8 +301,7 @@ def fetch_matches(url, display = False):
     page_source = get_page_source(url)
 
     if page_source is None:
-        print("Failed to retrieve the page source.")
-        return None
+        exit("Failed to retrieve the page source.")
 
     # Updated regular expression pattern to find the word 'matches' and the word before it (presumably a number)
     pattern = re.compile(r'(\d+)\s+matches')
@@ -668,5 +451,4 @@ def find_keywords(all_percentage_data):
 keywords = find_keywords(all_percentage_data)
 
 #print(keywords)
-#print(fetch_tennis_data("http://www.tennisabstract.com/charting/IgaSwiatek.html"))
-print(all_percentage_data) 
+#print(all_percentage_data)

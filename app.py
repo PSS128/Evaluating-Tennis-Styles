@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, jsonify
 import csv
-import os
 from Tennis_Abstract_Scraping_v2 import (
     fetch_tennis_data_2,
     fetch_tennis_data,
@@ -8,38 +7,19 @@ from Tennis_Abstract_Scraping_v2 import (
     fetch_tennis_data_4,
     display_percentage_difference,
     fetch_matches,
-    find_keywords,
-    get_cached_data,
-    save_to_cache
+    find_keywords
 )
 
 app = Flask(__name__)
 
-# Read tennis players from CSV files in csv_files folder
+# Read tennis players from a CSV file
 tennis_players = []
-csv_files_dir = os.path.join(os.path.dirname(__file__), 'csv_files')
-
-# Try to load from multiple CSV files
-csv_file_names = ['all_atp_players.csv', 'all_wta_players.csv', 'atp_top_100.csv', 'wta_top_100.csv', 'names.csv']
-
-for csv_file_name in csv_file_names:
-    csv_path = os.path.join(csv_files_dir, csv_file_name)
-    if os.path.exists(csv_path):
-        try:
-            with open(csv_path, "r", encoding='utf-8') as f:
-                csv_reader = csv.reader(f)
-                next(csv_reader)  # Skip the header row
-                for row in csv_reader:
-                    if row:  # Check row is not empty
-                        full_name = row[0]
-                        if full_name not in tennis_players:  # Avoid duplicates
-                            tennis_players.append(full_name)
-        except Exception as e:
-            print(f"Error reading {csv_file_name}: {e}")
-
-# If no players loaded, add a default empty list
-if not tennis_players:
-    print("Warning: No tennis players loaded from CSV files")
+with open("names.csv", "r") as f:
+    csv_reader = csv.reader(f)
+    next(csv_reader)  # Skip the header row
+    for row in csv_reader:
+        full_name = row[0]
+        tennis_players.append(full_name)
 
 @app.route("/", methods=["GET"])
 def home():
@@ -56,111 +36,39 @@ def search():
 
 @app.route("/tennis_data/<name>", methods=["GET"])
 def tennis_data(name):
-    try:
-        # Fetch your tennis data here, then pass it to render_template
-        tennis_name = name  # captured from the URL
-        # Remove all spaces from the name
-        name = name.replace(" ", "")
+    # Fetch your tennis data here, then pass it to render_template
+    tennis_name = name  # captured from the URL
+    # Remove all spaces from the name
+    name = name.replace(" ", "")
+    
+    # Your URL will look something like this depending on the player's name structure
+    url = f"http://www.tennisabstract.com/charting/{name}.html"
+    tennis_link  = url
+    nummatches = fetch_matches(url)
+    # Fetch all the data using your functions
+    olddata_2, newdata_2 = fetch_tennis_data_2(url, display=False)
+    olddata_3, newdata_3 = fetch_tennis_data_3(url, display=False)
+    olddata, newdata = fetch_tennis_data(url, display=False)
+    olddata_4, newdata_4 = fetch_tennis_data_4(url, display=False)
 
-        # Your URL will look something like this depending on the player's name structure
-        url = f"https://www.tennisabstract.com/charting/{name}.html"
-        tennis_link  = url
+    percentdata_2 = display_percentage_difference(olddata_2, newdata_2, "Points by Rally Length")
+    percentdata_3 = display_percentage_difference(olddata_3, newdata_3, "Shot Frequency")
+    percentdata = display_percentage_difference(olddata, newdata, "Winner Type")
+    percentdata_4 = display_percentage_difference(olddata_4, newdata_4, "Unforced Error")
 
-        # Check cache first
-        cached_data = get_cached_data(name)
-
-        if cached_data:
-            # Cache hit - use cached data
-            print(f"Using cached data for {tennis_name}")
-            return render_template("tennis_data.html",
-                                olddata_2=cached_data['data']['olddata_2'],
-                                newdata_2=cached_data['data']['newdata_2'],
-                                percentdata_2=cached_data['percentdata']['percentdata_2'],
-                                olddata_3=cached_data['data']['olddata_3'],
-                                newdata_3=cached_data['data']['newdata_3'],
-                                percentdata_3=cached_data['percentdata']['percentdata_3'],
-                                olddata=cached_data['data']['olddata'],
-                                newdata=cached_data['data']['newdata'],
-                                percentdata=cached_data['percentdata']['percentdata'],
-                                olddata_4=cached_data['data']['olddata_4'],
-                                newdata_4=cached_data['data']['newdata_4'],
-                                percentdata_4=cached_data['percentdata']['percentdata_4'],
-                                tennis_name=tennis_name,
-                                tennis_link=tennis_link,
-                                nummatches=cached_data['nummatches'],
-                                keywords=cached_data['keywords'])
-
-        # Cache miss - fetch fresh data
-        print(f"Cache miss for {tennis_name}, fetching fresh data...")
-
-        # Fetch matches with error handling
-        nummatches = fetch_matches(url)
-        if nummatches is None:
-            return render_template("error.html",
-                                 error_message=f"Unable to fetch data for {tennis_name}. The player page may not exist or the server is unavailable.",
-                                 player_name=tennis_name), 404
-
-        # Fetch all the data using your functions
-        olddata_2, newdata_2 = fetch_tennis_data_2(url, display=False)
-        olddata_3, newdata_3 = fetch_tennis_data_3(url, display=False)
-        olddata, newdata = fetch_tennis_data(url, display=False)
-        olddata_4, newdata_4 = fetch_tennis_data_4(url, display=False)
-
-        # Check if any data fetch failed
-        if None in [olddata_2, newdata_2, olddata_3, newdata_3, olddata, newdata, olddata_4, newdata_4]:
-            return render_template("error.html",
-                                 error_message=f"Unable to fetch complete data for {tennis_name}. Some data may be missing or unavailable.",
-                                 player_name=tennis_name), 500
-
-        percentdata_2 = display_percentage_difference(olddata_2, newdata_2, "Points by Rally Length")
-        percentdata_3 = display_percentage_difference(olddata_3, newdata_3, "Shot Frequency")
-        percentdata = display_percentage_difference(olddata, newdata, "Winner Type")
-        percentdata_4 = display_percentage_difference(olddata_4, newdata_4, "Unforced Error")
-
-        all_percentage_data = [percentdata_2, percentdata_3, percentdata, percentdata_4]
-        keywords = find_keywords(all_percentage_data)
-
-        # Save to cache for future requests
-        cache_dict = {
-            'nummatches': nummatches,
-            'data': {
-                'olddata_2': olddata_2,
-                'newdata_2': newdata_2,
-                'olddata_3': olddata_3,
-                'newdata_3': newdata_3,
-                'olddata': olddata,
-                'newdata': newdata,
-                'olddata_4': olddata_4,
-                'newdata_4': newdata_4
-            },
-            'percentdata': {
-                'percentdata_2': percentdata_2,
-                'percentdata_3': percentdata_3,
-                'percentdata': percentdata,
-                'percentdata_4': percentdata_4
-            },
-            'keywords': keywords
-        }
-        save_to_cache(name, cache_dict)
-
-        # Return the render template with all your data
-        return render_template("tennis_data.html",
-                            olddata_2=olddata_2, newdata_2=newdata_2, percentdata_2=percentdata_2,
-                            olddata_3=olddata_3, newdata_3=newdata_3, percentdata_3=percentdata_3,
-                            olddata=olddata, newdata=newdata, percentdata=percentdata,
-                            olddata_4=olddata_4, newdata_4=newdata_4, percentdata_4=percentdata_4,
-                            tennis_name=tennis_name, tennis_link=tennis_link, nummatches=nummatches,
-                            keywords=keywords)
-
-    except Exception as e:
-        print(f"Error processing tennis data for {name}: {e}")
-        return render_template("error.html",
-                             error_message=f"An unexpected error occurred while fetching data for {tennis_name}.",
-                             player_name=tennis_name), 500
+    all_percentage_data = [percentdata_2, percentdata_3, percentdata, percentdata_4]
+    keywords = find_keywords(all_percentage_data)
+    
+    # Return the render template with all your data
+    return render_template("tennis_data.html", 
+                        olddata_2=olddata_2, newdata_2=newdata_2, percentdata_2=percentdata_2, 
+                        olddata_3=olddata_3, newdata_3=newdata_3, percentdata_3=percentdata_3,
+                        olddata=olddata, newdata=newdata, percentdata=percentdata,
+                        olddata_4=olddata_4, newdata_4=newdata_4, percentdata_4=percentdata_4, 
+                        tennis_name=tennis_name, tennis_link = tennis_link, nummatches = nummatches,
+                        keywords=keywords)
 
 
 
 if __name__ == "__main__":
     app.run()
-
-

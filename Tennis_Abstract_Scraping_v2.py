@@ -1,8 +1,81 @@
 import requests
 import re
-
+import csv
 import time
 import random
+import os
+from bs4 import BeautifulSoup
+import json
+from datetime import datetime, timedelta
+
+# Load formatted data from CSV files
+def load_formatted_data_from_csv():
+    """
+    Loads the formatted data from CSV files into global variables.
+    Returns them in the format: [['Header', 'Count', 'Percentage'], ['Type', count, 'X.XX%'], ...]
+    """
+    def load_csv(filename):
+        """Helper function to load a single CSV file"""
+        filepath = os.path.join(os.path.dirname(__file__), 'csv_files', filename)
+        if not os.path.exists(filepath):
+            # Return default empty data if file doesn't exist
+            return [['Type', 'Count', 'Percentage']]
+
+        with open(filepath, 'r', encoding='utf-8') as csvfile:
+            reader = csv.reader(csvfile)
+            data = []
+            for i, row in enumerate(reader):
+                if i == 0:
+                    # Header row - keep as strings
+                    data.append(row)
+                else:
+                    # Data rows - convert count to int, keep percentage as string
+                    data.append([row[0], int(row[1]), row[2]])
+            return data
+
+    atp_winners = load_csv('atp_winners_formatted.csv')
+    atp_errors = load_csv('atp_errors_formatted.csv')
+    wta_winners = load_csv('wta_winners_formatted.csv')
+    wta_errors = load_csv('wta_errors_formatted.csv')
+
+    return atp_winners, atp_errors, wta_winners, wta_errors
+
+# Load the data into global variables
+try:
+    atp_winners_formatted, atp_errors_formatted, wta_winners_formatted, wta_errors_formatted = load_formatted_data_from_csv()
+except Exception as e:
+    print(f"Warning: Could not load formatted CSV data: {e}")
+    # Set default empty data if loading fails
+    atp_winners_formatted = [['Type', 'Count', 'Percentage']]
+    atp_errors_formatted = [['Type', 'Count', 'Percentage']]
+    wta_winners_formatted = [['Type', 'Count', 'Percentage']]
+    wta_errors_formatted = [['Type', 'Count', 'Percentage']]
+
+# Load WTA players list for checking
+def load_wta_players_list():
+    """
+    Loads the list of all WTA players from CSV file.
+    Returns a set of player names (without spaces) for fast lookup.
+    """
+    wta_players = set()
+    filepath = os.path.join(os.path.dirname(__file__), 'csv_files', 'all_wta_players.csv')
+
+    try:
+        if os.path.exists(filepath):
+            with open(filepath, 'r', encoding='utf-8') as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    # Remove spaces and store in lowercase for case-insensitive comparison
+                    player_name = row['name'].replace(' ', '').lower()
+                    wta_players.add(player_name)
+    except Exception as e:
+        print(f"Warning: Could not load WTA players list: {e}")
+
+    return wta_players
+
+# Load WTA players list at module initialization
+wta_players_set = load_wta_players_list()
+
 
 def get_page_source(url, retries=3, delay_min=1, delay_max=3):
     try:
@@ -36,7 +109,8 @@ def fetch_tennis_data(url, display = True):
     page_source = get_page_source(url)
 
     if page_source is None:
-        exit("Failed to retrieve the page source.")
+        print("Failed to retrieve the page source.")
+        return None, None
 
     pattern = re.compile(r"'(Ace|Forehand|Backhand|Net)', (\d+)]")
     matches = pattern.findall(page_source)
@@ -48,8 +122,19 @@ def fetch_tennis_data(url, display = True):
     total_count_old = sum(count for _, count in data_rows[:half_index])
     total_count_new = sum(count for _, count in data_rows[half_index:half_index + 4])
 
+    # Extract player name from the URL
+    # URL format: http://www.tennisabstract.com/charting/PlayerName.html
+    player_name = url.split('/')[-1].replace('.html', '').lower()
+
+    # Check if player is in WTA players list
+    is_wta_player = player_name in wta_players_set
+
     # Create olddata and newdata with percentages
-    olddata = [header] + [[winner_type, count, "{:.2f}%".format((count / total_count_old) * 100)] for winner_type, count in data_rows[:half_index]]
+    # Set olddata based on player gender
+    if is_wta_player:
+        olddata = wta_winners_formatted
+    else:
+        olddata = atp_winners_formatted
     newdata = [header] + [[winner_type, count, "{:.2f}%".format((count / total_count_new) * 100)] for winner_type, count in data_rows[half_index:half_index + 4]]
     title = header[0]
 
@@ -59,11 +144,6 @@ def fetch_tennis_data(url, display = True):
         print("\nNew Data:")
         display_table(newdata)
     return olddata, newdata
-
-# Example usage
-url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
-#fetch_tennis_data(url)
-
 
 
 
@@ -152,12 +232,14 @@ url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
 #fetch_tennis_data_3(url)
 
 
+#Unforced errors
 def fetch_tennis_data_4(url, display = True):
     page_source = get_page_source(url)
 
     # Check if the page source was successfully fetched
     if page_source is None:
-        exit("Failed to retrieve the page source.")
+        print("Failed to retrieve the page source.")
+        return None, None
 
     # Regular expression pattern to extract numbers after 'Unforced Error' values
     pattern = re.compile(r"'(Double Fault|Forehand|Backhand|Net)', (\d+)]")
@@ -179,7 +261,19 @@ def fetch_tennis_data_4(url, display = True):
     total_count_new = sum(count for _, count in data_rows[new_indices])
 
     # Create olddata and newdata with percentages
-    olddata = [header] + [[error_type, count, "{:.2f}%".format((count / total_count_old) * 100)] for error_type, count in data_rows[old_indices]]
+    # Extract player name from the URL
+    # URL format: http://www.tennisabstract.com/charting/PlayerName.html
+    player_name = url.split('/')[-1].replace('.html', '').lower()
+
+    # Check if player is in WTA players list
+    is_wta_player = player_name in wta_players_set
+
+    # Set olddata based on player gender
+    if is_wta_player:
+        olddata = wta_errors_formatted
+    else:
+        olddata = atp_errors_formatted
+
     newdata = [header] + [[error_type, count, "{:.2f}%".format((count / total_count_new) * 100)] for error_type, count in data_rows[new_indices]]
     title = header[0]
 
@@ -189,11 +283,6 @@ def fetch_tennis_data_4(url, display = True):
         print("\nNew Data:")
         display_table(newdata)
     return olddata, newdata
-
-# Example Usage:
-url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
-#fetch_tennis_data_4(url)
-
 
 
 '''

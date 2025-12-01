@@ -42,7 +42,7 @@ def tennis_data(name):
     name = name.replace(" ", "")
     
     # Your URL will look something like this depending on the player's name structure
-    url = f"http://www.tennisabstract.com/charting/{name}.html"
+    url = f"https://www.tennisabstract.com/charting/{name}.html"
     tennis_link  = url
     nummatches = fetch_matches(url)
     # Fetch all the data using your functions

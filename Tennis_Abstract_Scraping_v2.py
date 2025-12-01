@@ -1,8 +1,47 @@
 import requests
 import re
-
+import csv
 import time
 import random
+import os
+from bs4 import BeautifulSoup
+
+
+# Load formatted data from CSV files
+def load_formatted_data_from_csv():
+    """
+    Loads the formatted data from CSV files into global variables.
+    Returns them in the format: [['Header', 'Count', 'Percentage'], ['Type', count, 'X.XX%'], ...]
+    """
+    def load_csv(filename):
+        """Helper function to load a single CSV file"""
+        filepath = os.path.join(os.path.dirname(__file__), filename)
+        if not os.path.exists(filepath):
+            # Return default empty data if file doesn't exist
+            return [['Type', 'Count', 'Percentage']]
+
+        with open(filepath, 'r', encoding='utf-8') as csvfile:
+            reader = csv.reader(csvfile)
+            data = []
+            for i, row in enumerate(reader):
+                if i == 0:
+                    # Header row - keep as strings
+                    data.append(row)
+                else:
+                    # Data rows - convert count to int, keep percentage as string
+                    data.append([row[0], int(row[1]), row[2]])
+            return data
+
+    atp_winners = load_csv('atp_winners_formatted.csv')
+    atp_errors = load_csv('atp_errors_formatted.csv')
+    wta_winners = load_csv('wta_winners_formatted.csv')
+    wta_errors = load_csv('wta_errors_formatted.csv')
+
+    return atp_winners, atp_errors, wta_winners, wta_errors
+
+# Load the data into global variables
+atp_winners_formatted, atp_errors_formatted, wta_winners_formatted, wta_errors_formatted = load_formatted_data_from_csv()
+
 
 def get_page_source(url, retries=3, delay_min=1, delay_max=3):
     try:
@@ -48,8 +87,39 @@ def fetch_tennis_data(url, display = True):
     total_count_old = sum(count for _, count in data_rows[:half_index])
     total_count_new = sum(count for _, count in data_rows[half_index:half_index + 4])
 
+    # Extract player name from the URL
+    # URL format: http://www.tennisabstract.com/charting/PlayerName.html
+    player_name = url.split('/')[-1].replace('.html', '')
+
+    # Fetch the meta page to check if player is WTA or ATP
+    meta_page_source = get_page_source('https://www.tennisabstract.com/charting/meta.html')
+
+    # Parse the HTML content
+    soup = BeautifulSoup(meta_page_source, 'html.parser')
+
+    # Find all links with "p=" in href
+    names_links = soup.find_all('a', href=lambda href: (href and "p=" in href))
+
+    # Search for the player name in the links and check if it contains "wplayer"
+    is_wta_player = False
+    for link in names_links:
+        link_href = link.get('href')
+        if link_href and "p=" in link_href:
+            # Extract the name from the href (format: ?p=PlayerName)
+            link_player_name = link_href.split('p=')[1] if 'p=' in link_href else ''
+            # Check if this is our player
+            if link_player_name.lower() == player_name.lower():
+                # Check if this link contains "wplayer"
+                if "wplayer" in link_href:
+                    is_wta_player = True
+                break
+
     # Create olddata and newdata with percentages
-    olddata = [header] + [[winner_type, count, "{:.2f}%".format((count / total_count_old) * 100)] for winner_type, count in data_rows[:half_index]]
+    # Set olddata based on player gender
+    if is_wta_player:
+        olddata = wta_winners_formatted
+    else:
+        olddata = atp_winners_formatted
     newdata = [header] + [[winner_type, count, "{:.2f}%".format((count / total_count_new) * 100)] for winner_type, count in data_rows[half_index:half_index + 4]]
     title = header[0]
 
@@ -64,9 +134,9 @@ def fetch_tennis_data(url, display = True):
 url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
 #fetch_tennis_data(url)
 
+#fetch_tennis_data function stitches together the old and newdata
 
-
-
+#Shot length
 def fetch_tennis_data_2(url, display = True):
     page_source = get_page_source(url)
 
@@ -108,7 +178,7 @@ url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
 
 
 
-
+#Shot Frequency
 def fetch_tennis_data_3(url, display = True):
     page_source = get_page_source(url)
 
@@ -148,10 +218,10 @@ def fetch_tennis_data_3(url, display = True):
     return olddata, newdata
 
 # Example Usage:
-url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
+url = "http://www.tennisabstract.com/charting/IgaSwiatek.html"
 #fetch_tennis_data_3(url)
 
-
+#Unforced errors
 def fetch_tennis_data_4(url, display = True):
     page_source = get_page_source(url)
 
@@ -179,7 +249,39 @@ def fetch_tennis_data_4(url, display = True):
     total_count_new = sum(count for _, count in data_rows[new_indices])
 
     # Create olddata and newdata with percentages
-    olddata = [header] + [[error_type, count, "{:.2f}%".format((count / total_count_old) * 100)] for error_type, count in data_rows[old_indices]]
+    # Extract player name from the URL
+    # URL format: http://www.tennisabstract.com/charting/PlayerName.html
+    player_name = url.split('/')[-1].replace('.html', '')
+
+    # Fetch the meta page to check if player is WTA or ATP
+    meta_page_source = get_page_source('https://www.tennisabstract.com/charting/meta.html')
+
+    # Parse the HTML content
+    soup = BeautifulSoup(meta_page_source, 'html.parser')
+
+    # Find all links with "p=" in href
+    names_links = soup.find_all('a', href=lambda href: (href and "p=" in href))
+
+    # Search for the player name in the links and check if it contains "wplayer"
+    is_wta_player = False
+    for link in names_links:
+        link_href = link.get('href')
+        if link_href and "p=" in link_href:
+            # Extract the name from the href (format: ?p=PlayerName)
+            link_player_name = link_href.split('p=')[1] if 'p=' in link_href else ''
+            # Check if this is our player
+            if link_player_name.lower() == player_name.lower():
+                # Check if this link contains "wplayer"
+                if "wplayer" in link_href:
+                    is_wta_player = True
+                break
+
+    # Set olddata based on player gender
+    if is_wta_player:
+        olddata = wta_errors_formatted
+    else:
+        olddata = atp_errors_formatted
+
     newdata = [header] + [[error_type, count, "{:.2f}%".format((count / total_count_new) * 100)] for error_type, count in data_rows[new_indices]]
     title = header[0]
 
@@ -451,4 +553,4 @@ def find_keywords(all_percentage_data):
 keywords = find_keywords(all_percentage_data)
 
 #print(keywords)
-#print(all_percentage_data)
+#print(fetch_tennis_data("http://www.tennisabstract.com/charting/NovakDjokovic.html"))

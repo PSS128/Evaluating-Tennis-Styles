@@ -64,13 +64,6 @@ def tennis_data(name):
         url = f"https://www.tennisabstract.com/charting/{name}.html"
         tennis_link  = url
 
-        # Fetch matches with error handling
-        nummatches = fetch_matches(url)
-        if nummatches is None:
-            return render_template("error.html",
-                                 error_message=f"Unable to fetch data for {tennis_name}. The player page may not exist or the server is unavailable.",
-                                 player_name=tennis_name), 404
-
         # Fetch all the data using your functions
         olddata_2, newdata_2 = fetch_tennis_data_2(url, display=False)
         olddata_3, newdata_3 = fetch_tennis_data_3(url, display=False)
@@ -97,7 +90,7 @@ def tennis_data(name):
                             olddata_3=olddata_3, newdata_3=newdata_3, percentdata_3=percentdata_3,
                             olddata=olddata, newdata=newdata, percentdata=percentdata,
                             olddata_4=olddata_4, newdata_4=newdata_4, percentdata_4=percentdata_4,
-                            tennis_name=tennis_name, tennis_link=tennis_link, nummatches=nummatches,
+                            tennis_name=tennis_name, tennis_link=tennis_link,
                             keywords=keywords)
 
     except Exception as e:

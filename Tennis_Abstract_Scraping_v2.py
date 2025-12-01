@@ -45,7 +45,15 @@ def load_formatted_data_from_csv():
     return atp_winners, atp_errors, wta_winners, wta_errors
 
 # Load the data into global variables
-atp_winners_formatted, atp_errors_formatted, wta_winners_formatted, wta_errors_formatted = load_formatted_data_from_csv()
+try:
+    atp_winners_formatted, atp_errors_formatted, wta_winners_formatted, wta_errors_formatted = load_formatted_data_from_csv()
+except Exception as e:
+    print(f"Warning: Could not load formatted CSV data: {e}")
+    # Set default empty data if loading fails
+    atp_winners_formatted = [['Type', 'Count', 'Percentage']]
+    atp_errors_formatted = [['Type', 'Count', 'Percentage']]
+    wta_winners_formatted = [['Type', 'Count', 'Percentage']]
+    wta_errors_formatted = [['Type', 'Count', 'Percentage']]
 
 # Load WTA players list for checking
 def load_wta_players_list():
@@ -56,13 +64,16 @@ def load_wta_players_list():
     wta_players = set()
     filepath = os.path.join(os.path.dirname(__file__), 'csv_files', 'all_wta_players.csv')
 
-    if os.path.exists(filepath):
-        with open(filepath, 'r', encoding='utf-8') as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                # Remove spaces and store in lowercase for case-insensitive comparison
-                player_name = row['name'].replace(' ', '').lower()
-                wta_players.add(player_name)
+    try:
+        if os.path.exists(filepath):
+            with open(filepath, 'r', encoding='utf-8') as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    # Remove spaces and store in lowercase for case-insensitive comparison
+                    player_name = row['name'].replace(' ', '').lower()
+                    wta_players.add(player_name)
+    except Exception as e:
+        print(f"Warning: Could not load WTA players list: {e}")
 
     return wta_players
 

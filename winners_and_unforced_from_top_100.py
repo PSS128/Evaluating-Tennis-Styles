@@ -33,7 +33,10 @@ def tennis_data(name):
 
         # Check if URL is valid by making a request
         import requests
-        response = requests.get(url, timeout=10)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+        }
+        response = requests.get(url, headers=headers, timeout=10)
 
         # If URL doesn't exist (404) or other HTTP error, skip
         if response.status_code != 200:

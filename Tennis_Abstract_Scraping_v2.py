@@ -75,7 +75,8 @@ def fetch_tennis_data(url, display = True):
     page_source = get_page_source(url)
 
     if page_source is None:
-        exit("Failed to retrieve the page source.")
+        print("Failed to retrieve the page source.")
+        return None, None
 
     pattern = re.compile(r"'(Ace|Forehand|Backhand|Net)', (\d+)]")
     matches = pattern.findall(page_source)
@@ -146,7 +147,8 @@ def fetch_tennis_data_2(url, display = True):
 
     # Check if the page source was successfully fetched
     if page_source is None:
-        exit("Failed to retrieve the page source.")
+        print("Failed to retrieve the page source.")
+        return None, None
 
     # Regular expression pattern to extract numbers after 'Points by Rally Length' values
     pattern = re.compile(r"'(1 to 3 shots|4 to 6 shots|7 to 9 shots|10\+ shots)', (\d+)]")
@@ -176,7 +178,7 @@ def fetch_tennis_data_2(url, display = True):
     return olddata, newdata
 
 # Example Usage:
-url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
+#url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
 #fetch_tennis_data_2(url)
 
 
@@ -188,7 +190,8 @@ def fetch_tennis_data_3(url, display = True):
 
     # Check if the page source was successfully fetched
     if page_source is None:
-        exit("Failed to retrieve the page source.")
+        print("Failed to retrieve the page source.")
+        return None, None
 
     # Regular expression pattern to extract numbers after 'Shot Frequency' values
     pattern = re.compile(r"'(FH Drive|BH Drive|FH Slice|BH Slice|Dropshot|Lob|Net)', (\d+)]")
@@ -222,7 +225,7 @@ def fetch_tennis_data_3(url, display = True):
     return olddata, newdata
 
 # Example Usage:
-url = "http://www.tennisabstract.com/charting/IgaSwiatek.html"
+#url = "http://www.tennisabstract.com/charting/IgaSwiatek.html"
 #fetch_tennis_data_3(url)
 
 #Unforced errors
@@ -231,7 +234,8 @@ def fetch_tennis_data_4(url, display = True):
 
     # Check if the page source was successfully fetched
     if page_source is None:
-        exit("Failed to retrieve the page source.")
+        print("Failed to retrieve the page source.")
+        return None, None
 
     # Regular expression pattern to extract numbers after 'Unforced Error' values
     pattern = re.compile(r"'(Double Fault|Forehand|Backhand|Net)', (\d+)]")
@@ -301,7 +305,7 @@ def fetch_tennis_data_4(url, display = True):
     return olddata, newdata
 
 # Example Usage:
-url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
+#url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
 #fetch_tennis_data_4(url)
 
 
@@ -339,7 +343,7 @@ def display_percentage_difference(olddata, newdata, title):
     return percentage_difference_data
 
 # Example Usage
-url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
+#url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
 
 
 
@@ -370,7 +374,7 @@ def fetch_all_tennis_data(url):
     
 
 # Example usage
-url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
+#url = "http://www.tennisabstract.com/charting/NovakDjokovic.html"
 #fetch_all_tennis_data(url)
 
 
@@ -411,7 +415,8 @@ def fetch_matches(url, display = False):
     page_source = get_page_source(url)
 
     if page_source is None:
-        exit("Failed to retrieve the page source.")
+        print("Failed to retrieve the page source.")
+        return None
 
     # Updated regular expression pattern to find the word 'matches' and the word before it (presumably a number)
     pattern = re.compile(r'(\d+)\s+matches')

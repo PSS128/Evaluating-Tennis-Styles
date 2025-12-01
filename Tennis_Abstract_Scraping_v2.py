@@ -541,3 +541,4 @@ keywords = find_keywords(all_percentage_data)
 
 #print(keywords)
 #print(fetch_tennis_data("http://www.tennisabstract.com/charting/IgaSwiatek.html"))
+#print(all_percentage_data) 

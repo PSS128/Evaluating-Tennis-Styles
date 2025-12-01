@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 import csv
+import os
 from Tennis_Abstract_Scraping_v2 import (
     fetch_tennis_data_2,
     fetch_tennis_data,
@@ -7,19 +8,38 @@ from Tennis_Abstract_Scraping_v2 import (
     fetch_tennis_data_4,
     display_percentage_difference,
     fetch_matches,
-    find_keywords
+    find_keywords,
+    get_cached_data,
+    save_to_cache
 )
 
 app = Flask(__name__)
 
-# Read tennis players from a CSV file
+# Read tennis players from CSV files in csv_files folder
 tennis_players = []
-with open("names.csv", "r") as f:
-    csv_reader = csv.reader(f)
-    next(csv_reader)  # Skip the header row
-    for row in csv_reader:
-        full_name = row[0]
-        tennis_players.append(full_name)
+csv_files_dir = os.path.join(os.path.dirname(__file__), 'csv_files')
+
+# Try to load from multiple CSV files
+csv_file_names = ['all_atp_players.csv', 'all_wta_players.csv', 'atp_top_100.csv', 'wta_top_100.csv', 'names.csv']
+
+for csv_file_name in csv_file_names:
+    csv_path = os.path.join(csv_files_dir, csv_file_name)
+    if os.path.exists(csv_path):
+        try:
+            with open(csv_path, "r", encoding='utf-8') as f:
+                csv_reader = csv.reader(f)
+                next(csv_reader)  # Skip the header row
+                for row in csv_reader:
+                    if row:  # Check row is not empty
+                        full_name = row[0]
+                        if full_name not in tennis_players:  # Avoid duplicates
+                            tennis_players.append(full_name)
+        except Exception as e:
+            print(f"Error reading {csv_file_name}: {e}")
+
+# If no players loaded, add a default empty list
+if not tennis_players:
+    print("Warning: No tennis players loaded from CSV files")
 
 @app.route("/", methods=["GET"])
 def home():
